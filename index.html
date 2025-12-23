@@ -10,7 +10,7 @@
         
         .section-label { font-size: 13px; font-weight: 600; color: #86868b; margin-bottom: 8px; display: block; text-transform: uppercase; letter-spacing: 0.5px; }
         
-        textarea { width: 100%; height: 180px; padding: 15px; border: 1px solid #d2d2d7; border-radius: 12px; font-family: "SF Mono", "Courier New", monospace; font-size: 14px; box-sizing: border-box; margin-bottom: 25px; outline-color: #0071e3; background-color: #fbfbfd; }
+        textarea { width: 100%; height: 180px; padding: 15px; border: 1px solid #d2d2d7; border-radius: 12px; font-family: "SF Mono", "Courier New", monospace; font-size: 14px; box-sizing: border-box; margin-bottom: 25px; outline-color: #0071e3; background-color: #fbfbfd; resize: vertical; }
         
         .result-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-bottom: 25px; }
         .preview-box { background: #f9f9fb; border: 1px solid #e5e5e7; border-radius: 12px; padding: 15px; min-height: 120px; max-height: 300px; overflow-y: auto; }
@@ -19,6 +19,9 @@
         button { width: 100%; padding: 16px; background-color: #0071e3; color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
         button:hover { background-color: #0077ed; transform: translateY(-1px); }
         button:active { transform: translateY(0); }
+
+        /* Numbers 붙여넣기 팁 */
+        .tip { font-size: 12px; color: #888; margin-top: 10px; text-align: center; }
     </style>
 </head>
 <body>
@@ -26,25 +29,26 @@
 <div class="container">
     <h1>texthelper</h1>
     
-    <span class="section-label">Input (JSON / Key-Value Text)</span>
-    <textarea id="inputArea" placeholder='"key": "여기에 문장을 입력하면 띄어쓰기가 유지됩니다",'></textarea>
+    <span class="section-label">Input Area</span>
+    <textarea id="inputArea" placeholder='"key": "문장 끝에 따옴표나 쉼표가 있어도 자동으로 제거됩니다",'></textarea>
 
     <div class="result-layout">
         <div>
-            <span class="section-label">KEY</span>
+            <span class="section-label">KEY (추출된 키)</span>
             <div class="preview-box">
                 <div id="keyPreview" class="preview-content" style="color: #0071e3;"></div>
             </div>
         </div>
         <div>
-            <span class="section-label">WORD (VALUE)</span>
+            <span class="section-label">WORD (추출된 단어)</span>
             <div class="preview-box">
                 <div id="wordPreview" class="preview-content"></div>
             </div>
         </div>
     </div>
 
-    <button onclick="copyToNumbers()">Numbers용 2열 데이터 복사하기</button>
+    <button onclick="copyToNumbers()">Numbers용 데이터 복사하기 (2열 분리)</button>
+    <p class="tip">복사 후 Numbers에서 셀 하나를 선택하고 붙여넣으세요.</p>
 </div>
 
 <script>
@@ -59,15 +63,19 @@
 
         lines.forEach(line => {
             const trimmedLine = line.trim();
+            // 콜론(:)이 포함된 줄만 처리
             if (trimmedLine && trimmedLine.includes(':')) {
-                // 첫 번째 콜론만 찾아 분리함으로써 문장 내 콜론 보존
                 const separatorIndex = trimmedLine.indexOf(':');
-                let rawKey = trimmedLine.substring(0, separatorIndex);
-                let rawWord = trimmedLine.substring(separatorIndex + 1);
+                let rawKey = trimmedLine.substring(0, separatorIndex).trim();
+                let rawWord = trimmedLine.substring(separatorIndex + 1).trim();
 
-                // 정규식 설명: ^["'] (시작하는 따옴표) | ["']$ (끝나는 따옴표) | [,]$ (끝나는 쉼표) 제거
-                const cleanKey = rawKey.trim().replace(/^["']|["']$|[,]$/g, '').trim();
-                const cleanWord = rawWord.trim().replace(/^["']|["']$|[,]$/g, '').trim();
+                /**
+                 * 정규식 설명: 
+                 * /^["']+/ : 시작 부분의 따옴표(" 또는 ') 하나 이상 제거
+                 * /["',]+$/ : 끝 부분의 따옴표("), 홑따옴표('), 쉼표(,)의 모든 조합 제거
+                 */
+                const cleanKey = rawKey.replace(/^["']+/g, '').replace(/["',]+$/g, '');
+                const cleanWord = rawWord.replace(/^["']+/g, '').replace(/["',]+$/g, '');
 
                 keys.push(cleanKey);
                 words.push(cleanWord);
@@ -85,7 +93,7 @@
         let resultString = "";
         for (let i = 0; i < keys.length; i++) {
             if (keys[i] || words[i]) {
-                // \t (탭) 기호가 있어야 Numbers에서 옆 셀로 이동합니다.
+                // \t (탭 구분자)를 넣어 Numbers에서 열이 나뉘도록 함
                 resultString += (keys[i] || "") + "\t" + (words[i] || "") + "\n";
             }
         }
@@ -93,11 +101,13 @@
         if (!resultString) return;
 
         navigator.clipboard.writeText(resultString).then(() => {
-            alert('클립보드에 복사되었습니다!\nNumbers의 셀을 선택하고 붙여넣으세요.');
+            alert('클립보드에 복사되었습니다!');
+        }).catch(err => {
+            alert('복사에 실패했습니다. 직접 드래그해서 복사해 주세요.');
         });
     }
 
-    // 입력할 때마다 실시간으로 결과 업데이트
+    // 입력 시 실시간 반영
     inputArea.addEventListener('input', processText);
 </script>
 
