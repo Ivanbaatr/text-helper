@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>환율 계산기 - Money Counter</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            width: 90%;
+            max-width: 600px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 2rem;
+        }
+        /* 핵심: 2개의 열로 분리하는 레이아웃 */
+        .grid-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr; /* 1:1 비율로 두 열 생성 */
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .column {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+        input {
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+        .result-box {
+            grid-column: span 2; /* 결과창은 두 열을 합쳐서 표시 */
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Money Counter</h1>
+    
+    <div class="grid-container">
+        <div class="column">
+            <label for="leftInput">통화 단위 (예: USD)</label>
+            <input type="text" id="leftInput" placeholder="입력하세요...">
+        </div>
+        
+        <div class="column">
+            <label for="rightInput">금액 (Amount)</label>
+            <input type="number" id="rightInput" placeholder="0">
+        </div>
+
+        <div class="result-box" id="displayArea">
+            준비됨: 입력을 시작하세요.
+        </div>
+    </div>
+</div>
+
+<script>
+    const leftInput = document.getElementById('leftInput');
+    const rightInput = document.getElementById('rightInput');
+    const displayArea = document.getElementById('displayArea');
+
+    function updateDisplay() {
+        const currency = leftInput.value || "---";
+        const amount = rightInput.value || "0";
+        displayArea.innerText = `현재 설정: ${currency} : ${amount}`;
+    }
+
+    leftInput.addEventListener('input', updateDisplay);
+    rightInput.addEventListener('input', updateDisplay);
+</script>
+
+</body>
+</html>
