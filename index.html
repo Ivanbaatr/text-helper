@@ -16,12 +16,16 @@
         .preview-box { background: #f9f9fb; border: 1px solid #e5e5e7; border-radius: 12px; padding: 15px; min-height: 120px; max-height: 300px; overflow-y: auto; }
         .preview-content { font-size: 14px; white-space: pre; color: #333; line-height: 1.8; }
         
-        button { width: 100%; padding: 16px; background-color: #0071e3; color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-        button:hover { background-color: #0077ed; transform: translateY(-1px); }
+        .button-group { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        button { width: 100%; padding: 16px; color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        
+        .btn-numbers { background-color: #0071e3; }
+        .btn-json { background-color: #34c759; }
+        
+        button:hover { opacity: 0.9; transform: translateY(-1px); }
         button:active { transform: translateY(0); }
 
-        /* Numbers 붙여넣기 팁 */
-        .tip { font-size: 12px; color: #888; margin-top: 10px; text-align: center; }
+        .tip { font-size: 12px; color: #888; margin-top: 15px; text-align: center; }
     </style>
 </head>
 <body>
@@ -30,84 +34,92 @@
     <h1>texthelper</h1>
     
     <span class="section-label">Input Area</span>
-    <textarea id="inputArea" placeholder='"key": "문장 끝에 따옴표나 쉼표가 있어도 자동으로 제거됩니다",'></textarea>
+    <textarea id="inputArea" placeholder='단어를 한 줄씩 입력하거나 "key":"value"를 입력하세요.'></textarea>
 
     <div class="result-layout">
         <div>
-            <span class="section-label">KEY (추출된 키)</span>
+            <span class="section-label">JSON 변환 결과 ("단어",)</span>
             <div class="preview-box">
-                <div id="keyPreview" class="preview-content" style="color: #0071e3;"></div>
+                <div id="jsonPreview" class="preview-content" style="color: #0071e3;"></div>
             </div>
         </div>
         <div>
-            <span class="section-label">WORD (추출된 단어)</span>
+            <span class="section-label">순수 단어 추출</span>
             <div class="preview-box">
                 <div id="wordPreview" class="preview-content"></div>
             </div>
         </div>
     </div>
 
-    <button onclick="copyToNumbers()">Numbers용 데이터 복사하기 (2열 분리)</button>
-    <p class="tip">복사 후 Numbers에서 셀 하나를 선택하고 붙여넣으세요.</p>
+    <div class="button-group">
+        <button class="btn-numbers" onclick="copyToNumbers()">Numbers용 복사 (Key \t Word)</button>
+        <button class="btn-json" onclick="copyToJson()">JSON용 복사 ("단어",)</button>
+    </div>
+    <p class="tip">JSON용 복사를 사용하면 JSON 파일의 배열이나 객체에 바로 붙여넣기 좋습니다.</p>
 </div>
 
 <script>
     const inputArea = document.getElementById('inputArea');
-    const keyPreview = document.getElementById('keyPreview');
+    const jsonPreview = document.getElementById('jsonPreview');
     const wordPreview = document.getElementById('wordPreview');
 
     function processText() {
         const lines = inputArea.value.split('\n');
-        let keys = [];
-        let words = [];
+        let jsonLines = [];
+        let cleanWords = [];
 
         lines.forEach(line => {
             const trimmedLine = line.trim();
-            // 콜론(:)이 포함된 줄만 처리
-            if (trimmedLine && trimmedLine.includes(':')) {
-                const separatorIndex = trimmedLine.indexOf(':');
-                let rawKey = trimmedLine.substring(0, separatorIndex).trim();
-                let rawWord = trimmedLine.substring(separatorIndex + 1).trim();
+            if (!trimmedLine) return;
 
-                /**
-                 * 정규식 설명: 
-                 * /^["']+/ : 시작 부분의 따옴표(" 또는 ') 하나 이상 제거
-                 * /["',]+$/ : 끝 부분의 따옴표("), 홑따옴표('), 쉼표(,)의 모든 조합 제거
-                 */
-                const cleanKey = rawKey.replace(/^["']+/g, '').replace(/["',]+$/g, '');
-                const cleanWord = rawWord.replace(/^["']+/g, '').replace(/["',]+$/g, '');
+            let wordOnly = trimmedLine;
+            // 만약 key:value 형태라면 value 부분만 추출 시도
+            if (trimmedLine.includes(':')) {
+                const parts = trimmedLine.split(':');
+                wordOnly = parts[1] ? parts[1] : parts[0];
+            }
 
-                keys.push(cleanKey);
-                words.push(cleanWord);
+            // 앞뒤 특수문자(" ' ,) 제거
+            const cleanWord = wordOnly.replace(/^["']+/g, '').replace(/["',]+$/g, '').trim();
+            
+            if (cleanWord) {
+                jsonLines.push(`"${cleanWord}",`);
+                cleanWords.push(cleanWord);
             }
         });
 
-        keyPreview.innerText = keys.join('\n');
-        wordPreview.innerText = words.join('\n');
+        jsonPreview.innerText = jsonLines.join('\n');
+        wordPreview.innerText = cleanWords.join('\n');
     }
 
     function copyToNumbers() {
-        const keys = keyPreview.innerText.split('\n');
-        const words = wordPreview.innerText.split('\n');
-        
+        const lines = inputArea.value.split('\n');
         let resultString = "";
-        for (let i = 0; i < keys.length; i++) {
-            if (keys[i] || words[i]) {
-                // \t (탭 구분자)를 넣어 Numbers에서 열이 나뉘도록 함
-                resultString += (keys[i] || "") + "\t" + (words[i] || "") + "\n";
+        
+        lines.forEach(line => {
+            if (line.includes(':')) {
+                const parts = line.split(':');
+                const k = parts[0].replace(/^["']+/g, '').replace(/["',]+$/g, '').trim();
+                const w = parts[1].replace(/^["']+/g, '').replace(/["',]+$/g, '').trim();
+                resultString += k + "\t" + w + "\n";
             }
-        }
+        });
+        copyAction(resultString || "복사할 데이터가 없습니다.");
+    }
 
-        if (!resultString) return;
+    function copyToJson() {
+        copyAction(jsonPreview.innerText);
+    }
 
-        navigator.clipboard.writeText(resultString).then(() => {
+    function copyAction(text) {
+        if (!text) return;
+        navigator.clipboard.writeText(text).then(() => {
             alert('클립보드에 복사되었습니다!');
         }).catch(err => {
-            alert('복사에 실패했습니다. 직접 드래그해서 복사해 주세요.');
+            alert('복사 실패!');
         });
     }
 
-    // 입력 시 실시간 반영
     inputArea.addEventListener('input', processText);
 </script>
 
