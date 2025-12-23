@@ -4,68 +4,21 @@
     <meta charset="UTF-8">
     <title>texthelper</title>
     <style>
-        body {
-            font-family: -apple-system, sans-serif;
-            padding: 30px;
-            background-color: #f9f9f9;
-            color: #333;
-        }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        h1 {
-            font-size: 1.5rem;
-            color: #1d1d1f;
-            margin-bottom: 20px;
-        }
-        textarea {
-            width: 100%;
-            height: 200px;
-            padding: 15px;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            font-family: monospace;
-            font-size: 14px;
-            box-sizing: border-box;
-            margin-bottom: 15px;
-        }
-        .result-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            background: #fff;
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            min-height: 100px;
-        }
-        .column-label {
-            font-size: 0.75rem;
-            font-weight: bold;
-            color: #888;
-            margin-bottom: 5px;
-        }
-        .preview-list {
-            font-size: 14px;
-            line-height: 1.8;
-            white-space: pre-wrap;
-        }
-        button {
-            width: 100%;
-            padding: 12px;
-            background-color: #0071e3;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            margin-top: 15px;
-        }
-        button:hover {
-            background-color: #0077ed;
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 40px; background-color: #f5f5f7; color: #1d1d1f; line-height: 1.5; }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+        h1 { font-size: 24px; font-weight: 700; margin-bottom: 30px; text-align: center; color: #333; }
+        
+        .section-label { font-size: 13px; font-weight: 600; color: #86868b; margin-bottom: 8px; display: block; text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        textarea { width: 100%; height: 180px; padding: 15px; border: 1px solid #d2d2d7; border-radius: 12px; font-family: "SF Mono", "Courier New", monospace; font-size: 14px; box-sizing: border-box; margin-bottom: 25px; outline-color: #0071e3; background-color: #fbfbfd; }
+        
+        .result-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-bottom: 25px; }
+        .preview-box { background: #f9f9fb; border: 1px solid #e5e5e7; border-radius: 12px; padding: 15px; min-height: 120px; max-height: 300px; overflow-y: auto; }
+        .preview-content { font-size: 14px; white-space: pre; color: #333; line-height: 1.8; }
+        
+        button { width: 100%; padding: 16px; background-color: #0071e3; color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        button:hover { background-color: #0077ed; transform: translateY(-1px); }
+        button:active { transform: translateY(0); }
     </style>
 </head>
 <body>
@@ -73,21 +26,25 @@
 <div class="container">
     <h1>texthelper</h1>
     
-    <label class="column-label">데이터 붙여넣기 (JSON 형식 등)</label>
-    <textarea id="inputArea" placeholder='"app_name": "Money counter", 과 같이 입력하세요...'></textarea>
+    <span class="section-label">Input (JSON / Key-Value Text)</span>
+    <textarea id="inputArea" placeholder='"key": "여기에 문장을 입력하면 띄어쓰기가 유지됩니다",'></textarea>
 
-    <div class="result-container">
+    <div class="result-layout">
         <div>
-            <div class="column-label">KEY</div>
-            <div id="keyPreview" class="preview-list" style="color: #0071e3;"></div>
+            <span class="section-label">KEY</span>
+            <div class="preview-box">
+                <div id="keyPreview" class="preview-content" style="color: #0071e3;"></div>
+            </div>
         </div>
         <div>
-            <div class="column-label">WORD</div>
-            <div id="wordPreview" class="preview-list" style="color: #333;"></div>
+            <span class="section-label">WORD (VALUE)</span>
+            <div class="preview-box">
+                <div id="wordPreview" class="preview-content"></div>
+            </div>
         </div>
     </div>
 
-    <button onclick="copyToNumbers()">Numbers용 데이터 복사하기</button>
+    <button onclick="copyToNumbers()">Numbers용 2열 데이터 복사하기</button>
 </div>
 
 <script>
@@ -101,18 +58,19 @@
         let words = [];
 
         lines.forEach(line => {
-            if (line.includes(':')) {
-                let [key, ...wordParts] = line.split(':');
-                let word = wordParts.join(':'); // 값이 콜론을 포함할 경우 대비
+            const trimmedLine = line.trim();
+            if (trimmedLine && trimmedLine.includes(':')) {
+                // 첫 번째 콜론만 찾아 분리함으로써 문장 내 콜론 보존
+                const separatorIndex = trimmedLine.indexOf(':');
+                let rawKey = trimmedLine.substring(0, separatorIndex);
+                let rawWord = trimmedLine.substring(separatorIndex + 1);
 
-                // 따옴표, 쉼표, 앞뒤 공백 제거
-                const cleanKey = key.replace(/["',]/g, '').trim();
-                const cleanWord = word.replace(/["',]/g, '').trim();
+                // 정규식 설명: ^["'] (시작하는 따옴표) | ["']$ (끝나는 따옴표) | [,]$ (끝나는 쉼표) 제거
+                const cleanKey = rawKey.trim().replace(/^["']|["']$|[,]$/g, '').trim();
+                const cleanWord = rawWord.trim().replace(/^["']|["']$|[,]$/g, '').trim();
 
-                if (cleanKey || cleanWord) {
-                    keys.push(cleanKey);
-                    words.push(cleanWord);
-                }
+                keys.push(cleanKey);
+                words.push(cleanWord);
             }
         });
 
@@ -124,19 +82,22 @@
         const keys = keyPreview.innerText.split('\n');
         const words = wordPreview.innerText.split('\n');
         
-        // Key와 Word 사이에 Tab(\t)을 넣어 Numbers가 열을 구분하게 함
-        let copyString = "";
+        let resultString = "";
         for (let i = 0; i < keys.length; i++) {
             if (keys[i] || words[i]) {
-                copyString += `${keys[i]}\t${words[i]}\n`;
+                // \t (탭) 기호가 있어야 Numbers에서 옆 셀로 이동합니다.
+                resultString += (keys[i] || "") + "\t" + (words[i] || "") + "\n";
             }
         }
 
-        navigator.clipboard.writeText(copyString).then(() => {
-            alert('복사되었습니다! Numbers 앱에 붙여넣으세요.');
+        if (!resultString) return;
+
+        navigator.clipboard.writeText(resultString).then(() => {
+            alert('클립보드에 복사되었습니다!\nNumbers의 셀을 선택하고 붙여넣으세요.');
         });
     }
 
+    // 입력할 때마다 실시간으로 결과 업데이트
     inputArea.addEventListener('input', processText);
 </script>
 
