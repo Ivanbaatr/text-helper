@@ -10,22 +10,17 @@
         
         .section-label { font-size: 13px; font-weight: 600; color: #86868b; margin-bottom: 8px; display: block; text-transform: uppercase; letter-spacing: 0.5px; }
         
-        textarea { width: 100%; height: 180px; padding: 15px; border: 1px solid #d2d2d7; border-radius: 12px; font-family: "SF Mono", "Courier New", monospace; font-size: 14px; box-sizing: border-box; margin-bottom: 25px; outline-color: #0071e3; background-color: #fbfbfd; resize: vertical; }
+        textarea { width: 100%; height: 200px; padding: 15px; border: 1px solid #d2d2d7; border-radius: 12px; font-family: "SF Mono", "Courier New", monospace; font-size: 14px; box-sizing: border-box; margin-bottom: 25px; outline-color: #0071e3; background-color: #fbfbfd; resize: vertical; }
         
-        .result-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-bottom: 25px; }
-        .preview-box { background: #f9f9fb; border: 1px solid #e5e5e7; border-radius: 12px; padding: 15px; min-height: 120px; max-height: 300px; overflow-y: auto; }
-        .preview-content { font-size: 14px; white-space: pre; color: #333; line-height: 1.8; }
+        .result-layout { margin-bottom: 25px; }
+        .preview-box { background: #f9f9fb; border: 1px solid #e5e5e7; border-radius: 12px; padding: 20px; min-height: 150px; max-height: 400px; overflow-y: auto; }
+        .preview-content { font-size: 14px; white-space: pre; color: #333; line-height: 1.8; font-family: "SF Mono", "Courier New", monospace; }
         
-        .button-group { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        button { width: 100%; padding: 16px; color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-        
-        .btn-numbers { background-color: #0071e3; }
-        .btn-json { background-color: #34c759; }
-        
-        button:hover { opacity: 0.9; transform: translateY(-1px); }
+        button { width: 100%; padding: 16px; background-color: #0071e3; color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        button:hover { background-color: #0077ed; transform: translateY(-1px); }
         button:active { transform: translateY(0); }
 
-        .tip { font-size: 12px; color: #888; margin-top: 15px; text-align: center; }
+        .tip { font-size: 12px; color: #888; margin-top: 15px; text-align: center; line-height: 1.6; }
     </style>
 </head>
 <body>
@@ -33,93 +28,85 @@
 <div class="container">
     <h1>texthelper</h1>
     
-    <span class="section-label">Input Area</span>
-    <textarea id="inputArea" placeholder='단어를 한 줄씩 입력하거나 "key":"value"를 입력하세요.'></textarea>
+    <span class="section-label">Input Area (Numbers에서 두 열을 복사해 붙여넣으세요)</span>
+    <textarea id="inputArea" placeholder="예시:&#10;total_sum	총합계&#10;daily_exp	일일지출"></textarea>
 
     <div class="result-layout">
-        <div>
-            <span class="section-label">JSON 변환 결과 ("단어",)</span>
-            <div class="preview-box">
-                <div id="jsonPreview" class="preview-content" style="color: #0071e3;"></div>
-            </div>
-        </div>
-        <div>
-            <span class="section-label">순수 단어 추출</span>
-            <div class="preview-box">
-                <div id="wordPreview" class="preview-content"></div>
-            </div>
+        <span class="section-label">JSON 결과 (마지막 줄 쉼표 없음)</span>
+        <div class="preview-box">
+            <div id="jsonPreview" class="preview-content"></div>
         </div>
     </div>
 
-    <div class="button-group">
-        <button class="btn-numbers" onclick="copyToNumbers()">Numbers용 복사 (Key \t Word)</button>
-        <button class="btn-json" onclick="copyToJson()">JSON용 복사 ("단어",)</button>
-    </div>
-    <p class="tip">JSON용 복사를 사용하면 JSON 파일의 배열이나 객체에 바로 붙여넣기 좋습니다.</p>
+    <button onclick="copyToClipboard()">JSON 결과 복사하기</button>
+    <p class="tip">
+        1. Numbers에서 열 두 개를 선택하여 복사(Cmd+C)합니다.<br>
+        2. 위 입력창에 붙여넣으면 자동으로 <strong>"key": "word",</strong> 포맷이 생성됩니다.<br>
+        3. 마지막 줄은 쉼표 없이 깔끔하게 처리됩니다.
+    </p>
 </div>
 
 <script>
     const inputArea = document.getElementById('inputArea');
     const jsonPreview = document.getElementById('jsonPreview');
-    const wordPreview = document.getElementById('wordPreview');
 
     function processText() {
         const lines = inputArea.value.split('\n');
-        let jsonLines = [];
-        let cleanWords = [];
+        let resultLines = [];
 
-        lines.forEach(line => {
-            const trimmedLine = line.trim();
-            if (!trimmedLine) return;
+        // 비어있지 않은 줄만 걸러내기
+        const activeLines = lines.filter(line => line.trim() !== "");
 
-            let wordOnly = trimmedLine;
-            // 만약 key:value 형태라면 value 부분만 추출 시도
-            if (trimmedLine.includes(':')) {
-                const parts = trimmedLine.split(':');
-                wordOnly = parts[1] ? parts[1] : parts[0];
-            }
+        activeLines.forEach((line, index) => {
+            let key = "";
+            let word = "";
 
-            // 앞뒤 특수문자(" ' ,) 제거
-            const cleanWord = wordOnly.replace(/^["']+/g, '').replace(/["',]+$/g, '').trim();
-            
-            if (cleanWord) {
-                jsonLines.push(`"${cleanWord}",`);
-                cleanWords.push(cleanWord);
-            }
-        });
-
-        jsonPreview.innerText = jsonLines.join('\n');
-        wordPreview.innerText = cleanWords.join('\n');
-    }
-
-    function copyToNumbers() {
-        const lines = inputArea.value.split('\n');
-        let resultString = "";
-        
-        lines.forEach(line => {
-            if (line.includes(':')) {
+            // Numbers에서 복사한 탭(\t) 기반 데이터 처리
+            if (line.includes('\t')) {
+                const parts = line.split('\t');
+                key = parts[0].trim();
+                word = parts[1] ? parts[1].trim() : "";
+            } 
+            // 기존 콜론(:) 기반 데이터 처리
+            else if (line.includes(':')) {
                 const parts = line.split(':');
-                const k = parts[0].replace(/^["']+/g, '').replace(/["',]+$/g, '').trim();
-                const w = parts[1].replace(/^["']+/g, '').replace(/["',]+$/g, '').trim();
-                resultString += k + "\t" + w + "\n";
+                key = parts[0].trim();
+                word = parts[1] ? parts[1].trim() : "";
+            } 
+            // 구분자가 없을 경우
+            else {
+                key = line.trim();
+                word = line.trim();
+            }
+
+            // 앞뒤에 있을 수 있는 기존 따옴표나 쉼표 제거 (중복 방지)
+            const cleanKey = key.replace(/^["']+/g, '').replace(/["',]+$/g, '');
+            const cleanWord = word.replace(/^["']+/g, '').replace(/["',]+$/g, '');
+
+            // 마지막 줄 여부 확인하여 쉼표 결정
+            const isLast = (index === activeLines.length - 1);
+            const lineContent = `"${cleanKey}": "${cleanWord}"${isLast ? "" : ","}`;
+
+            if (cleanKey || cleanWord) {
+                resultLines.push(lineContent);
             }
         });
-        copyAction(resultString || "복사할 데이터가 없습니다.");
+
+        jsonPreview.innerText = resultLines.join('\n');
     }
 
-    function copyToJson() {
-        copyAction(jsonPreview.innerText);
-    }
-
-    function copyAction(text) {
+    function copyToClipboard() {
+        const text = jsonPreview.innerText;
         if (!text) return;
+
         navigator.clipboard.writeText(text).then(() => {
-            alert('클립보드에 복사되었습니다!');
+            alert('JSON 데이터가 복사되었습니다!');
         }).catch(err => {
-            alert('복사 실패!');
+            alert('복사 실패! 직접 드래그해서 복사해 주세요.');
         });
     }
 
+    // 입력 시 실시간 반영
     inputArea.addEventListener('input', processText);
 </script>
 
