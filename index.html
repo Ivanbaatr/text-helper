@@ -2,100 +2,142 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>환율 계산기 - Money Counter</title>
+    <title>texthelper</title>
     <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f4f7f6;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
+            font-family: -apple-system, sans-serif;
+            padding: 30px;
+            background-color: #f9f9f9;
+            color: #333;
         }
         .container {
-            background: white;
-            padding: 2rem;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-            width: 90%;
-            max-width: 600px;
+            max-width: 800px;
+            margin: 0 auto;
         }
         h1 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 2rem;
-        }
-        /* 핵심: 2개의 열로 분리하는 레이아웃 */
-        .grid-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr; /* 1:1 비율로 두 열 생성 */
-            gap: 20px;
+            font-size: 1.5rem;
+            color: #1d1d1f;
             margin-bottom: 20px;
         }
-        .column {
-            display: flex;
-            flex-direction: column;
-        }
-        label {
-            margin-bottom: 8px;
-            font-weight: bold;
-            color: #555;
-        }
-        input {
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 1rem;
-        }
-        .result-box {
-            grid-column: span 2; /* 결과창은 두 열을 합쳐서 표시 */
-            background: #e9ecef;
+        textarea {
+            width: 100%;
+            height: 200px;
             padding: 15px;
-            border-radius: 6px;
-            text-align: center;
-            font-size: 1.2rem;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 14px;
+            box-sizing: border-box;
+            margin-bottom: 15px;
+        }
+        .result-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            background: #fff;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            min-height: 100px;
+        }
+        .column-label {
+            font-size: 0.75rem;
             font-weight: bold;
-            color: #2c3e50;
+            color: #888;
+            margin-bottom: 5px;
+        }
+        .preview-list {
+            font-size: 14px;
+            line-height: 1.8;
+            white-space: pre-wrap;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #0071e3;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+        button:hover {
+            background-color: #0077ed;
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>Money Counter</h1>
+    <h1>texthelper</h1>
     
-    <div class="grid-container">
-        <div class="column">
-            <label for="leftInput">통화 단위 (예: USD)</label>
-            <input type="text" id="leftInput" placeholder="입력하세요...">
-        </div>
-        
-        <div class="column">
-            <label for="rightInput">금액 (Amount)</label>
-            <input type="number" id="rightInput" placeholder="0">
-        </div>
+    <label class="column-label">데이터 붙여넣기 (JSON 형식 등)</label>
+    <textarea id="inputArea" placeholder='"app_name": "Money counter", 과 같이 입력하세요...'></textarea>
 
-        <div class="result-box" id="displayArea">
-            준비됨: 입력을 시작하세요.
+    <div class="result-container">
+        <div>
+            <div class="column-label">KEY</div>
+            <div id="keyPreview" class="preview-list" style="color: #0071e3;"></div>
+        </div>
+        <div>
+            <div class="column-label">WORD</div>
+            <div id="wordPreview" class="preview-list" style="color: #333;"></div>
         </div>
     </div>
+
+    <button onclick="copyToNumbers()">Numbers용 데이터 복사하기</button>
 </div>
 
 <script>
-    const leftInput = document.getElementById('leftInput');
-    const rightInput = document.getElementById('rightInput');
-    const displayArea = document.getElementById('displayArea');
+    const inputArea = document.getElementById('inputArea');
+    const keyPreview = document.getElementById('keyPreview');
+    const wordPreview = document.getElementById('wordPreview');
 
-    function updateDisplay() {
-        const currency = leftInput.value || "---";
-        const amount = rightInput.value || "0";
-        displayArea.innerText = `현재 설정: ${currency} : ${amount}`;
+    function processText() {
+        const lines = inputArea.value.split('\n');
+        let keys = [];
+        let words = [];
+
+        lines.forEach(line => {
+            if (line.includes(':')) {
+                let [key, ...wordParts] = line.split(':');
+                let word = wordParts.join(':'); // 값이 콜론을 포함할 경우 대비
+
+                // 따옴표, 쉼표, 앞뒤 공백 제거
+                const cleanKey = key.replace(/["',]/g, '').trim();
+                const cleanWord = word.replace(/["',]/g, '').trim();
+
+                if (cleanKey || cleanWord) {
+                    keys.push(cleanKey);
+                    words.push(cleanWord);
+                }
+            }
+        });
+
+        keyPreview.innerText = keys.join('\n');
+        wordPreview.innerText = words.join('\n');
     }
 
-    leftInput.addEventListener('input', updateDisplay);
-    rightInput.addEventListener('input', updateDisplay);
+    function copyToNumbers() {
+        const keys = keyPreview.innerText.split('\n');
+        const words = wordPreview.innerText.split('\n');
+        
+        // Key와 Word 사이에 Tab(\t)을 넣어 Numbers가 열을 구분하게 함
+        let copyString = "";
+        for (let i = 0; i < keys.length; i++) {
+            if (keys[i] || words[i]) {
+                copyString += `${keys[i]}\t${words[i]}\n`;
+            }
+        }
+
+        navigator.clipboard.writeText(copyString).then(() => {
+            alert('복사되었습니다! Numbers 앱에 붙여넣으세요.');
+        });
+    }
+
+    inputArea.addEventListener('input', processText);
 </script>
 
 </body>
